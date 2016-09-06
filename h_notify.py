@@ -11,8 +11,7 @@ except:
     from urllib.parse import urlencode       
 
 class Notifier(object):
-    def __init__(self, type=None, user=None, token=None, pickle=None):
-        self.user = user
+    def __init__(self, type=None, token=None, pickle=None):
         self.token = token
         self.pickle = pickle + '.pickle'
         self.type = type
@@ -47,10 +46,11 @@ class Notifier(object):
     def notify_facet(self, facet=None, value=None, groupname=None):
         params = {'_separate_replies':'true'}
         params[facet] = value
+        #params['limit'] = 2
         h_url = Hypothesis().query_url.format(query=urlencode(params))
         r = None
         if self.token is not None:
-            h = Hypothesis(self.user, self.token)
+            h = Hypothesis(token=self.token)
             r = h.token_authenticated_query(h_url)
         else:
             r = requests.get(h_url).json()
@@ -76,8 +76,8 @@ class Notifier(object):
         self.save(cache)
 
 class SlackNotifier(Notifier):
-    def __init__(self, type=None, user=None, token=None, pickle=None, channel=None, hook=None):
-        super(SlackNotifier, self).__init__(type=type, user=user, token=token, pickle=pickle)
+    def __init__(self, type=None, token=None, pickle=None, channel=None, hook=None):
+        super(SlackNotifier, self).__init__(type=type, token=token, pickle=pickle)
         self.channel = channel
         self.hook = hook
     
@@ -110,26 +110,26 @@ class SlackNotifier(Notifier):
         print ( r.status_code )
 
 """ Watch for annotations on a set of URLs """
-def notify_slack_url_activity(url=None, user=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_url_activity(url=None, token=None, pickle=None, channel=None, hook=None):
     print ('checking url %s for channel %s' % ( url, channel) )
-    notifier = SlackNotifier(type='set', user=user, token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
     notifier.notify_facet(facet='uri', value=url)
 
 """ Watch for annotations by a user """
 def notify_slack_user_activity(user=None, token=None, pickle=None, channel=None, hook=None):
     print ('checking user %s for channel %s' % ( user, channel) )
-    notifier = SlackNotifier(type='dict', user=user, token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='dict', token=token, pickle=pickle, channel=channel, hook=hook)
     notifier.notify_facet(facet='user', value=user)
 
 """ Watch for annotations in a Hypothesis group """
-def notify_slack_group_activity(group=None, groupname=None, user=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_group_activity(group=None, groupname=None, token=None, pickle=None, channel=None, hook=None):
     print ('checking group %s for channel %s' % ( groupname, channel) )
-    notifier = SlackNotifier(type='set', user=user, token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
     notifier.notify_facet(facet='group', value=group, groupname=groupname)
 
 """ Watch for annotations on a tag """
-def notify_slack_tag_activity(tag=None, user=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_tag_activity(tag=None, token=None, pickle=None, channel=None, hook=None):
     print ('checking tag %s for channel %s' % ( tag, channel) )
-    notifier = SlackNotifier(type='set', user=user, token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
     notifier.notify_facet(facet='tag', value=tag)
 
