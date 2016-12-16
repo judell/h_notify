@@ -107,10 +107,10 @@ class Hypothesis:
     def get_annotation(self, id=None):
         h_url = '%s/annotations/%s' % ( self.api_url, id )
         if self.token is not None:
-            json_text = self.token_authenticated_query(h_url)
+            obj = self.token_authenticated_query(h_url)
         else:
-            json_text = requests.get(h_url)
-        return json.loads(json_text)
+            obj = json.loads(requests.get(h_url))
+        return obj
 
     def create_annotation_with_target(self, url=None, start_pos=None, end_pos=None, prefix=None, 
                    exact=None, suffix=None, text=None, tags=None, link=None):
