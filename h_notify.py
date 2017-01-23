@@ -1,4 +1,4 @@
-import requests, json, traceback, sys, smtplib, email, time, datetime, pytz
+import requests, json, traceback, sys, smtplib, email, time, datetime, pytz, markdown
 from hypothesis import Hypothesis, HypothesisAnnotation
 from operator import itemgetter
 from email.mime.text import MIMEText
@@ -73,7 +73,9 @@ class Notifier(object):
     def notify_facet(self, facet=None, value=None, groupname=None):
         params = {'_separate_replies':'true'}
         params[facet] = value
+        #params['limit'] = 200
         h_url = Hypothesis().query_url.format(query=urlencode(params))
+        #print h_url
         r = None
         if self.token is not None:
             h = Hypothesis(token=self.token)
@@ -85,6 +87,7 @@ class Notifier(object):
         cache = self.data()
         rows.sort(key=itemgetter('updated'))
         for row in rows:
+            #print row['id']
             new = False
             anno = HypothesisAnnotation(row)
             if self.type == 'set':
@@ -123,8 +126,8 @@ class SlackNotifier(Notifier):
                 tags = '*' + tags + '*\n'
             payload = self.make_simple_payload(template % (vars['anno_url'], vars['type'], vars['viewer'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, tags) )
             print (json.dumps(payload))
-            #r = requests.post(self.hook, data = json.dumps(payload))
-            #print ( r.status_code )
+            r = requests.post(self.hook, data = json.dumps(payload))
+            print ( r.status_code )
         except:
             print ( anno.uri, anno.id, anno.user )
             print ( traceback.print_exc() )
@@ -174,6 +177,7 @@ class RssNotifier(Notifier):
             print ( traceback.print_exc() )
 
     def emit_group_rss(self, group=None, groupname=None):
+        md = markdown.Markdown()
         from feedgen.feed import FeedGenerator
         fg = FeedGenerator()
         fg.id('https://h.jonudell.info')
@@ -195,17 +199,36 @@ class RssNotifier(Notifier):
             annos.sort(key=itemgetter('updated'), reverse=True)
         annos = [HypothesisAnnotation(a) for a in annos]
         for anno in annos:
+            ref_user = None
+            in_reply_to = None
+            root_id = anno.id
+            if len(anno.references) > 0:
+                try:
+                    ref_id = anno.references[-1:][0]
+                    root_id = anno.references[0]
+                    print 'ref_id: %s, root_id %s' % (ref_id, root_id)
+                    ref = h.get_annotation(ref_id)
+                    print 'ref: %s' % ref
+                    ref_user = HypothesisAnnotation(ref).user
+                    in_reply_to = '<p>in reply to %s' % ref_user
+                except:
+                    print "cannot get user for ref"
             fe = fg.add_entry()
             fe.id(anno.id)
-            fe.title('%s %s' % (anno.user, anno.updated))
+            fe.title('%s annotated %s in the group %s at %s ' % (anno.user, anno.uri, groupname, anno.updated))
             fe.author({"email":None,"name":anno.user,"uri":None})
             dl = "https://hyp.is/%s" % anno.id
             fe.link ({"href":"%s" % dl})
-            #fe.content()
-            tags = ''
+            content = ''
+            if ref_user is not None:
+                content += in_reply_to
+            if anno.exact is not None:
+                content += '<p>in reference to:</p><p> <blockquote><em>%s</em></blockquote></p>' % anno.exact
+            content += '<p>%s <a href="https://hyp.is/%s">said</a>:</p>' % (anno.user, root_id)
+            content += '%s' % md.convert(anno.text)
             if len(anno.tags):
-                tags += '\n\nTags: ' + ', '.join(anno.tags)
-            fe.description('url: %s\n\ndirect link %s\n\n%s\n\n%s' % ( anno.uri, dl, anno.text, tags))
+                content += '<p>tags: %s' % ', '.join(anno.tags)
+            fe.content(content)
             dt = dateutil.parser.parse(anno.updated)
             dt_tz = dt.replace(tzinfo=pytz.UTC)
             fe.pubdate(dt_tz)
