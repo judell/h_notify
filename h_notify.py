@@ -215,7 +215,7 @@ class RssNotifier(Notifier):
                     print "cannot get user for ref"
             fe = fg.add_entry()
             fe.id(anno.id)
-            fe.title('%s annotated %s in the group %s at %s ' % (anno.user, anno.uri, groupname, anno.updated))
+            fe.title('%s annotated %s in the group %s at %s ' % (anno.user, anno.doc_title, groupname, anno.updated))
             fe.author({"email":None,"name":anno.user,"uri":None})
             dl = "https://hyp.is/%s" % anno.id
             fe.link ({"href":"%s" % dl})
@@ -228,7 +228,7 @@ class RssNotifier(Notifier):
             content += '%s' % md.convert(anno.text)
             if len(anno.tags):
                 content += '<p>tags: %s' % ', '.join(anno.tags)
-            fe.content(content)
+            fe.content(content, type='CDATA')
             dt = dateutil.parser.parse(anno.updated)
             dt_tz = dt.replace(tzinfo=pytz.UTC)
             fe.pubdate(dt_tz)
