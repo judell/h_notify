@@ -1,4 +1,4 @@
-import requests, json, traceback, sys, smtplib, email, time, datetime, pytz, markdown
+import requests, json, traceback, sys, smtplib, email, time, datetime, pytz, markdown, re 
 from hypothesis import Hypothesis, HypothesisAnnotation
 from operator import itemgetter
 from email.mime.text import MIMEText
@@ -59,7 +59,7 @@ class Notifier(object):
         ingroup = ''
         if anno.group != '__world__':
             ingroup = 'in group %s' % groupname
-        viewer = 'http://jonudell.net/h/facet.html?facet=user&search=' + anno.user # replace with Activity Pages when it's ready!
+        viewer = 'https://hypothes.is/users/' + anno.user 
         return {
             'anno_url' : anno_url,
             'quote' : quote,
@@ -87,7 +87,6 @@ class Notifier(object):
         cache = self.data()
         rows.sort(key=itemgetter('updated'))
         for row in rows:
-            #print row['id']
             new = False
             anno = HypothesisAnnotation(row)
             if self.type == 'set':
@@ -109,7 +108,19 @@ class SlackNotifier(Notifier):
         super(SlackNotifier, self).__init__(type=type, token=token, pickle=pickle)
         self.channel = channel
         self.hook = hook
-    
+        self.namemap = {} # for at_mention 
+        self.init_namemap()
+
+    def init_namemap(self):
+        """ Look for a map of Slack @names to ids, keyed to the current Slack hook """
+        try:
+            with open('slack_namemap.json') as file:
+                namemaps = json.loads(file.read())
+                if self.hook in namemaps.keys():
+                    self.namemap = namemaps[self.hook]
+        except:
+            traceback.print_exc()
+
     def make_simple_payload(self, text):
        return {"channel": "#" + self.channel, 
                "username": "notifier", 
@@ -117,13 +128,21 @@ class SlackNotifier(Notifier):
                "text": text
               }
 
+    def at_mention(self, text):
+        for at_name in self.namemap.keys():
+            text = re.sub(at_name, '<@' + self.namemap[at_name] + '>', text)
+        return text
+
     def notify(self, anno=None, groupname=None):
+        if groupname is None:
+            groupname = anno.group
         try:
             vars = self.make_vars(anno, groupname)
             template = '<%s|%s> added by <%s|%s> to <%s|%s> %s\n>%s\n%s\n%s__________\n'
             tags = vars['tags']
             if tags != '':
                 tags = '*' + tags + '*\n'
+            anno.text = self.at_mention(anno.text)
             payload = self.make_simple_payload(template % (vars['anno_url'], vars['type'], vars['viewer'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, tags) )
             print (json.dumps(payload))
             r = requests.post(self.hook, data = json.dumps(payload))
@@ -181,7 +200,7 @@ class RssNotifier(Notifier):
         from feedgen.feed import FeedGenerator
         fg = FeedGenerator()
         fg.id('https://h.jonudell.info')
-        fg.title('Hypothesis group %s (%s)' % (group, groupname))
+        fg.title('Hypothesis group %s' % groupname)
         fg.author( {'name':'Jon Udell','email':'judell@hypothes.is'} )
         fg.description("Hypothesis notifications for group %s" % groupname)
         fg.link( href='https://h.jonudell.info/group_rss' )
@@ -210,7 +229,7 @@ class RssNotifier(Notifier):
                     ref = h.get_annotation(ref_id)
                     print 'ref: %s' % ref
                     ref_user = HypothesisAnnotation(ref).user
-                    in_reply_to = '<p>in reply to %s' % ref_user
+                    in_reply_to = '<p>in reply to %s </p>' % ref_user
                 except:
                     print "cannot get user for ref"
             fe = fg.add_entry()
@@ -223,9 +242,9 @@ class RssNotifier(Notifier):
             if ref_user is not None:
                 content += in_reply_to
             if anno.exact is not None:
-                content += '<p>in reference to:</p><p> <blockquote><em>%s</em></blockquote></p>' % anno.exact
-            content += '<p>%s <a href="https://hyp.is/%s">said</a>:</p>' % (anno.user, root_id)
-            content += '%s' % md.convert(anno.text)
+                content += '<p>in reference to: </p> <p> <blockquote><em>%s</em></blockquote></p>' % anno.exact
+            content += '<p> %s <a href="https://hyp.is/%s">said</a>: </p> ' % (anno.user, root_id)
+            content += '%s ' % md.convert(anno.text)
             if len(anno.tags):
                 content += '<p>tags: %s' % ', '.join(anno.tags)
             fe.content(content, type='CDATA')
@@ -260,7 +279,7 @@ def notify_email_group_activity(group=None, groupname=None, token=None, pickle=N
 def notify_slack_url_activity(url=None, token=None, pickle=None, channel=None, hook=None):
     print ('checking url %s for channel %s' % ( url, channel) )
     notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
-    notifier.notify_facet(facet='uri', value=url)
+    notifier.notify_facet(facet='wildcard_uri', value=url)
 
 """ Watch for annotations by a user """
 def notify_slack_user_activity(user=None, token=None, pickle=None, channel=None, hook=None):
