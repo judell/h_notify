@@ -10,7 +10,6 @@ default_email_password = 'q1...Nm'
 
 while True:
     try:
-
         # slack recipes
 
         # notify when an url in a list of urls of interest to the team is annotated
@@ -27,7 +26,6 @@ while True:
 
         # notify when there's an annotation with a specified tag
         notify_slack_tag_activity(tag='nextprez', token=default_token, pickle='nextprez', channel='test', hook=default_hook)
-
 
         # rss recipes 
 
