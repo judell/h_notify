@@ -10,9 +10,8 @@ while True:
         # slack recipes
 
         # notify when an url in a list of urls of interest to the team is annotated
-        urls = ['http://example.com', 'https://hypothes.is/blog/test-our-new-canvas-app-prototype/']
-        for url in urls:
-            notify_slack_url_activity(url=url, token=default_token, pickle='urls', channel='test', hook=default_hook)
+        # uses the wildcard_api endpoint
+        notify_slack_url_activity(url='https://web.hypothes.is/*', token=default_token, pickle='urls', channel='test', hook=default_hook)
 
         # notify when there's an annotation from one among a list of users
         users = ['remiholden', 'jeremydean']
