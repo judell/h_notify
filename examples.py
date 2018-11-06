@@ -4,8 +4,8 @@ import time
 default_token = '687...3df5' # hypothesis api token for a user who is a member of all monitored groups
 default_hook = 'https://hooks.slack.com/services/T03...yzy' # see https://YOUR_VANITY_NAME.slack.com/apps/manage/custom-integrations)
 
-default_smtp_server = 'smtp.example.com'
-default_email_sender = 'hypothesis.notifier@example.com.com'
+default_smtp_server = 'smtp.example.com' 
+default_email_sender = 'hypothesis.notifier@example.com'
 default_email_password = 'q1...Nm'
 
 while True:
