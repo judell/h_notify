@@ -32,7 +32,7 @@ The values are internal Slack IDs which you can find at `https://api.slack.com/m
 
 Note that Slack usernames may be, but are not necessarily, the same as Hypothesis usernames. If I want to notify Dave Wolfe, whose Hypothesis username is dwolfe, I'll need to write his Slack handle, @dave, in the body of an annotation that's posted to a page monitored by this service.
 
-# RSS
+## RSS
 
 The `pickle` argument in this case also names an XML file that contains an RSS feed. So, for example, given this call ...
 
