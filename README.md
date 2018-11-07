@@ -1,6 +1,6 @@
 # Overview
 
-Watch Hypothesis URLs, groups, tags, or users, alert on new activity to Slack, email, or RSS.
+This tool watches Hypothesis URLs, groups, tags, or users, and alerts on new annotation activity to Slack, email, or RSS.
 
 See `examples.py` for recipes. To run a modified version of it, copy `hypothesis.py`, `h_notify.py`, and `examples.py` into a directory and run `python examples.py`.
 
