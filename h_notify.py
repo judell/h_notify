@@ -56,6 +56,7 @@ class Notifier(object):
             anno_url = "https://hyp.is/%s" % ref
             type = 'reply'
         tags = ', '.join(anno.tags)
+        tags = tags.replace('%20',' ')
         ingroup = ''
         if anno.group != '__world__':
             ingroup = 'in group %s' % groupname
