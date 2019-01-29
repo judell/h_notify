@@ -14,10 +14,12 @@ except:
     from urllib.parse import urlencode       
 
 class Notifier(object):
-    def __init__(self, type=None, token=None, pickle=None):
+    def __init__(self, type=None, token=None, pickle=None, notified_ids=None):
         self.token = token
         self.pickle = pickle + '.pickle'
         self.type = type
+        self.notified_ids = notified_ids
+        print 'Notifier notified_ids %s' % self.notified_ids
         assert ( self.type == 'dict' or self.type == 'set' )
         
     def save(self, obj):
@@ -100,15 +102,18 @@ class Notifier(object):
                 if anno.id not in cache[value]:
                     cache[value].add(anno.id) 
                     new = True
-            if new:
+            if new and anno.id not in self.notified_ids:
                 self.notify(anno, groupname=groupname)
+                self.notified_ids.append(anno.id)
         self.save(cache)
+        return self.notified_ids
 
 class SlackNotifier(Notifier):
-    def __init__(self, type=None, token=None, pickle=None, channel=None, hook=None):
-        super(SlackNotifier, self).__init__(type=type, token=token, pickle=pickle)
+    def __init__(self, type=None, token=None, pickle=None, channel=None, hook=None, notified_ids=None):
+        super(SlackNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
         self.channel = channel
         self.hook = hook
+        self.notified_ids = notified_ids
         self.namemap = {} # for at_mention 
         self.init_namemap()
 
@@ -153,22 +158,23 @@ class SlackNotifier(Notifier):
             print ( traceback.print_exc() )
 
 class EmailNotifier(Notifier):
-    def __init__(self, type=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None):
-        super(EmailNotifier, self).__init__(type=type, token=token, pickle=pickle)
+    def __init__(self, type=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
+        super(EmailNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
         self.smtp = smtp
         self.sender = sender
         self.sender_password = sender_password
         self.recipient = recipient
+        self.notified_ids = notified_ids
         self.server = smtplib.SMTP('%s:587' % self.smtp)
         self.server.ehlo()
         self.server.starttls()
         self.server.login(self.sender, self.sender_password)
 
-    def make_email_msg(self, text):
+    def make_email_msg(self, text, url, user):
         msg = MIMEText(text, 'plain', 'utf-8')
         msg['From'] = self.sender
         msg['To'] = self.recipient
-        msg['Subject'] = 'New annotation'
+        msg['Subject'] = 'Annotation on %s by %s' % (url, user)
         return msg
 
     def notify(self, anno=None, groupname=None):
@@ -176,16 +182,16 @@ class EmailNotifier(Notifier):
             vars = self.make_vars(anno, groupname)
             template = 'Annotation (%s) added by %s to %s (%s)\n\nQuote: %s\n\nText: %s\n\n%s\n\nTags: %s'
             payload = template % ( vars['anno_url'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, vars['tags'] )
-            print anno.user, anno.uri
-            message = self.make_email_msg(payload)
+            print anno.uri, anno.user
+            message = self.make_email_msg(payload, anno.uri, anno.user)
             self.server.sendmail(self.sender, [self.recipient], message.as_string())
         except:
             print ( anno.uri, anno.id, anno.user )
             print ( traceback.print_exc() )
-
+ 
 class RssNotifier(Notifier):
-    def __init__(self, type=None, token=None, pickle=None):
-        super(RssNotifier, self).__init__(type=type, token=token, pickle=pickle)
+    def __init__(self, type=None, token=None, pickle=None, notified_ids=None):
+        super(RssNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
 
     def notify(self, anno=None, groupname=None):
         try:
@@ -256,54 +262,67 @@ class RssNotifier(Notifier):
         rssfeed  = fg.rss_str(pretty=True) # Get the RSS feed as string
         fg.rss_file('%s.xml' % group) # Write the RSS feed to a file
       
-
 # Email recipes
 
-def notify_email_user_activity(user=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None):
+def notify_email_user_activity(user=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
     print ('checking user %s for recipient %s' % ( user, recipient) )
     notifier = EmailNotifier(type='dict', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient)
     notifier.notify_facet(facet='user', value=user)
+    return notified_ids
 
-def notify_email_tag_activity(tag=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None):
+def notify_email_tag_activity(tag=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
     print ('checking tag %s for recipient %s' % ( tag, recipient) )
-    notifier = EmailNotifier(type='set', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient)
+    notifier = EmailNotifier(type='set', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient, notified_ids=notified_ids)
     notifier.notify_facet(facet='tag', value=tag)
+    return notified_ids
 
-def notify_email_group_activity(group=None, groupname=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None ):
+def notify_email_group_activity(group=None, groupname=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
     print ('checking group %s for recipient %s' % ( groupname, recipient ) )
-    notifier = EmailNotifier(type='set', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient)
+    notifier = EmailNotifier(type='set', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient, notified_ids=notified_ids)
     notifier.notify_facet(facet='group', value=group, groupname=groupname)
+    return notified_ids
+
+def notify_email_url_activity(url=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
+    print ('checking url %s for recipient %s' % ( url, recipient ) )
+    notifier = EmailNotifier(type='set', token=token, pickle=pickle, smtp=smtp, sender=sender, sender_password=sender_password, recipient=recipient, notified_ids=notified_ids)
+    notifier.notify_facet(facet='uri', value=url)
+    return notified_ids
 
 # Slack recipes
 
 """ Watch for annotations on a set of URLs """
-def notify_slack_url_activity(url=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_url_activity(url=None, token=None, pickle=None, channel=None, hook=None, notified_ids=None):
     print ('checking url %s for channel %s' % ( url, channel) )
-    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook, notified_ids=notified_ids)
     notifier.notify_facet(facet='wildcard_uri', value=url)
+    return notified_ids
 
 """ Watch for annotations by a user """
-def notify_slack_user_activity(user=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_user_activity(user=None, token=None, pickle=None, channel=None, hook=None, notified_ids=None):
     print ('checking user %s for channel %s' % ( user, channel) )
-    notifier = SlackNotifier(type='dict', token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='dict', token=token, pickle=pickle, channel=channel, hook=hook, notified_ids=notified_ids)
     notifier.notify_facet(facet='user', value=user)
+    return notified_ids
 
 """ Watch for annotations in a Hypothesis group """
-def notify_slack_group_activity(group=None, groupname=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_group_activity(group=None, groupname=None, token=None, pickle=None, channel=None, hook=None, notified_ids=None):
     print ('checking group %s for channel %s' % ( groupname, channel) )
-    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook, notified_ids=notified_ids)
     notifier.notify_facet(facet='group', value=group, groupname=groupname)
+    return notified_ids
 
 """ Watch for annotations on a tag """
-def notify_slack_tag_activity(tag=None, token=None, pickle=None, channel=None, hook=None):
+def notify_slack_tag_activity(tag=None, token=None, pickle=None, channel=None, hook=None, notified_ids=None):
     print ('checking tag %s for channel %s' % ( tag, channel) )
-    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook)
+    notifier = SlackNotifier(type='set', token=token, pickle=pickle, channel=channel, hook=hook, notified_ids=notified_ids)
     notifier.notify_facet(facet='tag', value=tag)
+    return notified_ids
 
 # RSS recipies
 
-def notify_rss_group_activity(group=None, groupname=None, token=None, pickle=None):
+def notify_rss_group_activity(group=None, groupname=None, token=None, pickle=None, notified_ids=None):
     print ('updating rss for group %s' % groupname )
-    notifier = RssNotifier(type='set', token=token, pickle=pickle)
+    notifier = RssNotifier(type='set', token=token, pickle=pickle, notified_ids=notified_ids)
     notifier.notify_facet(facet='group', value=group, groupname=groupname)
     notifier.emit_group_rss(group=group, groupname=groupname)
+    return notified_ids
