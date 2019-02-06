@@ -76,7 +76,7 @@ class Notifier(object):
     def notify_facet(self, facet=None, value=None, groupname=None):
         params = {'_separate_replies':'true'}
         params[facet] = value
-        #params['limit'] = 200
+        params['limit'] = 200
         h_url = Hypothesis().query_url.format(query=urlencode(params))
         #print h_url
         r = None
