@@ -19,7 +19,7 @@ class Notifier(object):
         self.pickle = pickle + '.pickle'
         self.type = type
         self.notified_ids = notified_ids
-        print 'Notifier notified_ids %s' % self.notified_ids
+        #print ('Notifier notified_ids %s' % self.notified_ids)
         assert ( self.type == 'dict' or self.type == 'set' )
         
     def save(self, obj):
@@ -74,21 +74,13 @@ class Notifier(object):
             }
 
     def notify_facet(self, facet=None, value=None, groupname=None):
-        params = {'_separate_replies':'true'}
+        params = {}
         params[facet] = value
-        params['limit'] = 200
-        h_url = Hypothesis().query_url.format(query=urlencode(params))
-        #print h_url
-        r = None
-        if self.token is not None:
-            h = Hypothesis(token=self.token)
-            r = h.token_authenticated_query(h_url)
-        else:
-            r = requests.get(h_url).json()
-        rows = r['rows']
-        rows += r['replies']
-        cache = self.data()
+        params['limit'] = 200  # it's the default, but just for documentation here
+        h = Hypothesis(token=self.token)
+        rows = list(h.search_all(params))
         rows.sort(key=itemgetter('updated'))
+        cache = self.data()
         for row in rows:
             new = False
             anno = HypothesisAnnotation(row)
@@ -152,7 +144,7 @@ class SlackNotifier(Notifier):
             payload = self.make_simple_payload(template % (vars['anno_url'], vars['type'], vars['viewer'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, tags) )
             print (json.dumps(payload))
             r = requests.post(self.hook, data = json.dumps(payload))
-            print ( r.status_code )
+            print (r.status_code)
         except:
             print ( anno.uri, anno.id, anno.user )
             print ( traceback.print_exc() )
@@ -182,7 +174,6 @@ class EmailNotifier(Notifier):
             vars = self.make_vars(anno, groupname)
             template = 'Annotation (%s) added by %s to %s (%s)\n\nQuote: %s\n\nText: %s\n\n%s\n\nTags: %s'
             payload = template % ( vars['anno_url'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, vars['tags'] )
-            print anno.uri, anno.user
             message = self.make_email_msg(payload, anno.uri, anno.user)
             self.server.sendmail(self.sender, [self.recipient], message.as_string())
         except:
@@ -232,13 +223,11 @@ class RssNotifier(Notifier):
                 try:
                     ref_id = anno.references[-1:][0]
                     root_id = anno.references[0]
-                    print 'ref_id: %s, root_id %s' % (ref_id, root_id)
                     ref = h.get_annotation(ref_id)
-                    print 'ref: %s' % ref
                     ref_user = HypothesisAnnotation(ref).user
                     in_reply_to = '<p>in reply to %s </p>' % ref_user
                 except:
-                    print "cannot get user for ref"
+                    print ("cannot get user for ref")
             fe = fg.add_entry()
             fe.id(anno.id)
             fe.title('%s annotated %s in the group %s at %s ' % (anno.user, anno.doc_title, groupname, anno.updated))
