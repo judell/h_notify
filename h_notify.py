@@ -76,7 +76,7 @@ class Notifier(object):
     def notify_facet(self, facet=None, value=None, groupname=None):
         params = {}
         params[facet] = value
-        params['limit'] = 200  # it's the default, but just for documentation here
+        params['max_results'] = 200  
         h = Hypothesis(token=self.token)
         rows = list(h.search_all(params))
         rows.sort(key=itemgetter('updated'))
@@ -227,7 +227,7 @@ class RssNotifier(Notifier):
                     ref_user = HypothesisAnnotation(ref).user
                     in_reply_to = '<p>in reply to %s </p>' % ref_user
                 except:
-                    print ("cannot get user for ref")
+                    print ("cannot get user for ref_id %s, deleted?" % ref_id)
             fe = fg.add_entry()
             fe.id(anno.id)
             fe.title('%s annotated %s in the group %s at %s ' % (anno.user, anno.doc_title, groupname, anno.updated))
