@@ -18,7 +18,7 @@ class Notifier(object):
         self.token = token
         self.pickle = pickle + '.pickle'
         self.type = type
-        self.notified_ids = notified_ids
+        self.notified_ids = notified_ids if notified_ids else []
         #print ('Notifier notified_ids %s' % self.notified_ids)
         assert ( self.type == 'dict' or self.type == 'set' )
         
@@ -105,7 +105,6 @@ class SlackNotifier(Notifier):
         super(SlackNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
         self.channel = channel
         self.hook = hook
-        self.notified_ids = notified_ids
         self.namemap = {} # for at_mention 
         self.init_namemap()
 
@@ -156,7 +155,6 @@ class EmailNotifier(Notifier):
         self.sender = sender
         self.sender_password = sender_password
         self.recipient = recipient
-        self.notified_ids = notified_ids
         self.server = smtplib.SMTP('%s:587' % self.smtp)
         self.server.ehlo()
         self.server.starttls()
