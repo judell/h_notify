@@ -116,7 +116,7 @@ class SlackNotifier(Notifier):
                 if self.hook in namemaps.keys():
                     self.namemap = namemaps[self.hook]
         except:
-            traceback.print_exc()
+            pass
 
     def make_simple_payload(self, text):
        return {"channel": "#" + self.channel, 
