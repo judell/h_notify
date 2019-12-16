@@ -2,7 +2,7 @@
 
 This tool watches Hypothesis URLs, groups, tags, or users, and alerts on new annotation activity to Slack, email, or RSS. It runs as a standalone Python program, ideally on a server, but alternatively on an always-connected desktop computer. It periodically queries the Hypothesis API along one or more axes -- url (or wildcard_uri), user, group, tag -- and sends notifications by way of Slack, email, or RSS.
 
-See `examples.py` for recipes. To run a modified version of it, copy `hypothesis.py`, `h_notify.py`, and `examples.py` into a directory, adjust `examples.py` as needed, and run `python examples.py`.
+See `examples.py` for recipes. To run a modified version of it, copy `hypothesis.py` (from https://github.com/judell/Hypothesis), `h_notify.py`, and `examples.py` into a directory, adjust `examples.py` as needed, and run `python examples.py`.
 
 The `pickle` argument to methods like `notify_slack_url_activity`, `notify_slack_group_activity`, `notify_email_tag_activity`, and `notify_rss_group_activity` names a file that's created, then updated, to remember the IDs of annotations already seen. So, for example, this call ...
 
