@@ -1,25 +1,15 @@
-import requests, json, traceback, sys, smtplib, email, time, datetime, pytz, markdown, re 
+import dateutil, json, markdown, pickle, re, requests, smtplib
+from feedgen.feed import FeedGenerator
+
 from hypothesis import Hypothesis, HypothesisAnnotation
 from operator import itemgetter
 from email.mime.text import MIMEText
-import dateutil.parser
-
-try:
-    import cPickle as pickle
-except:
-    import pickle 
-try:
-    from urllib import urlencode
-except:
-    from urllib.parse import urlencode       
-
 class Notifier(object):
     def __init__(self, type=None, token=None, pickle=None, notified_ids=None):
         self.token = token
         self.pickle = pickle + '.pickle'
         self.type = type
         self.notified_ids = notified_ids if notified_ids else []
-        #print ('Notifier notified_ids %s' % self.notified_ids)
         assert ( self.type == 'dict' or self.type == 'set' )
         
     def save(self, obj):
@@ -144,10 +134,8 @@ class SlackNotifier(Notifier):
             print (json.dumps(payload))
             r = requests.post(self.hook, data = json.dumps(payload))
             print (r.status_code)
-        except:
-            print ( anno.uri, anno.id, anno.user )
-            print ( traceback.print_exc() )
-
+        except Exception as e:
+            print ( f'{e} {anno.uri} {anno.id} {anno.user}' )
 class EmailNotifier(Notifier):
     def __init__(self, type=None, token=None, pickle=None, smtp=None, sender=None, sender_password=None, recipient=None, notified_ids=None):
         super(EmailNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
@@ -174,10 +162,8 @@ class EmailNotifier(Notifier):
             payload = template % ( vars['anno_url'], anno.user, anno.uri, anno.doc_title, vars['ingroup'], vars['quote'], anno.text, vars['tags'] )
             message = self.make_email_msg(payload, anno.uri, anno.user)
             self.server.sendmail(self.sender, [self.recipient], message.as_string())
-        except:
-            print ( anno.uri, anno.id, anno.user )
-            print ( traceback.print_exc() )
- 
+        except Exception as e:
+            print ( f'{e} {anno.uri} {anno.id} {anno.user}' )
 class RssNotifier(Notifier):
     def __init__(self, type=None, token=None, pickle=None, notified_ids=None):
         super(RssNotifier, self).__init__(type=type, token=token, pickle=pickle, notified_ids=notified_ids)
@@ -187,13 +173,11 @@ class RssNotifier(Notifier):
             data = self.data()
             data.add(anno)
             self.save(data)
-        except:
-            print ( anno.uri, anno.id, anno.user )
-            print ( traceback.print_exc() )
+        except Exception as e:
+            print ( f'{e} {anno.uri} {anno.id} {anno.user}' )
 
     def emit_group_rss(self, group=None, groupname=None):
         md = markdown.Markdown()
-        from feedgen.feed import FeedGenerator
         fg = FeedGenerator()
         fg.id('https://h.jonudell.info')
         fg.title('Hypothesis group %s' % groupname)
